@@ -55,6 +55,11 @@
         }
 
         h1 { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .acoes-topo { display: flex; gap: 8px; flex-wrap: wrap; }
+        button.link-painel { font-family: inherit; cursor: pointer; }
+        dialog { border: none; border-radius: 10px; padding: 22px; width: min(360px, 92vw); box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+        dialog h3 { margin: 0 0 14px; }
+        dialog input { margin-bottom: 10px; }
         .link-painel {
             font-size: .85rem; font-weight: 600; color: #fff; text-decoration: none;
             padding: 8px 14px; border-radius: 6px;
@@ -258,8 +263,23 @@
         }
         .print-header, .print-signatures { display: none; }
     </style>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
+
+<dialog id="dlgLogin">
+    <form method="dialog">
+        <h3>Entrar na nuvem</h3>
+        <input type="email" id="nuvemEmail" placeholder="E-mail do gestor" required>
+        <input type="password" id="nuvemSenha" placeholder="Senha" required>
+        <div class="button-group" style="margin-top:6px;">
+            <button class="btn-action" value="ok">Entrar</button>
+            <button class="btn-action btn-warning" value="cancel" formnovalidate>Cancelar</button>
+        </div>
+    </form>
+</dialog>
 
 <div class="container">
     <div class="print-header">
@@ -267,7 +287,7 @@
         <p style="margin:5px 0 0 0;" id="printDataHora"></p>
     </div>
 
-    <h1 class="no-print"><span>Central de Planejamento de Produção</span><a class="link-painel" href="https://dashboard-alpha-jade-66.vercel.app/" target="_blank" rel="noopener">📊 Painel Industrial</a></h1>
+    <h1 class="no-print"><span>Central de Planejamento de Produção</span><span class="acoes-topo"><button class="link-painel" id="btnNuvem" onclick="loginNuvem()">☁ Entrar</button><a class="link-painel" href="https://dashboard-alpha-jade-66.vercel.app/" target="_blank" rel="noopener">📊 Painel Industrial</a></span></h1>
 
     <div class="section-title no-print">
         <span>1. Adicionar Produção por Produto</span>
@@ -463,6 +483,7 @@
         } catch (e) {
             console.error("Erro ao salvar no LocalStorage", e);
         }
+        sincronizar('receitas', receitas);
     }
 
     function carregarMuralStorage() {
@@ -480,6 +501,7 @@
         } catch (e) {
             console.error("Erro ao salvar mural no LocalStorage", e);
         }
+        sincronizar('mural', muralNotas);
     }
 
     function exportarReceitas() {
@@ -951,6 +973,74 @@
         };
         if (navigator.clipboard) navigator.clipboard.writeText(texto).then(feito).catch(alternativo);
         else alternativo();
+    }
+
+    /* ---------- Nuvem (Firebase): receitas e mural compartilhados entre computadores ---------- */
+    const NUVEM = typeof firebase !== 'undefined';
+    let fdb = null, fauth = null;
+
+    function sincronizar(chave, dados) {
+        if (!NUVEM || !fauth || !fauth.currentUser) return;
+        fdb.ref('insumos/' + chave).set(dados)
+            .catch(e => alert('Não foi possível salvar na nuvem: ' + e.message + '\nConfira as regras do Firebase para "insumos".'));
+    }
+
+    function loginNuvem() {
+        if (!NUVEM) { alert('Firebase não carregou. Verifique a conexão com a internet.'); return; }
+        if (fauth.currentUser) {
+            if (confirm('Sair da nuvem? Você continua vendo os dados, mas as alterações não serão enviadas.')) fauth.signOut();
+            return;
+        }
+        const d = document.getElementById('dlgLogin');
+        d.returnValue = '';
+        d.showModal();
+    }
+
+    if (NUVEM) {
+        firebase.initializeApp({
+            apiKey: "AIzaSyAriJIrfP6_ng0yEgQddV1g68FJ-w0NCWE", authDomain: "magno-dashboard.firebaseapp.com",
+            databaseURL: "https://magno-dashboard-default-rtdb.firebaseio.com", projectId: "magno-dashboard",
+            storageBucket: "magno-dashboard.firebasestorage.app", messagingSenderId: "469201677716",
+            appId: "1:469201677716:web:e7dca37aab550545fd7381"
+        });
+        fdb = firebase.database();
+        fauth = firebase.auth();
+
+        document.getElementById('dlgLogin').addEventListener('close', async e => {
+            if (e.target.returnValue !== 'ok') return;
+            try {
+                await fauth.signInWithEmailAndPassword(document.getElementById('nuvemEmail').value, document.getElementById('nuvemSenha').value);
+            } catch (x) { alert('Erro ao entrar: ' + x.message); }
+            document.getElementById('nuvemSenha').value = '';
+        });
+
+        fauth.onAuthStateChanged(u => {
+            document.getElementById('btnNuvem').textContent = u ? '☁ Conectado (sair)' : '☁ Entrar';
+            if (u) {
+                // primeira vez: se a nuvem estiver vazia, envia o que já existe neste navegador
+                fdb.ref('insumos').once('value').then(sn => {
+                    const v = sn.val() || {};
+                    if (!v.receitas) sincronizar('receitas', receitas);
+                    if (!v.mural) sincronizar('mural', muralNotas);
+                });
+            }
+        });
+
+        fdb.ref('insumos/receitas').on('value', sn => {
+            const v = sn.val();
+            if (!v) return;
+            receitas = v;
+            try { localStorage.setItem('receitasInsumos_v_definitiva', JSON.stringify(receitas)); } catch (e) {}
+            renderizarSelectProdutos();
+        }, () => {});
+
+        fdb.ref('insumos/mural').on('value', sn => {
+            const v = sn.val();
+            if (!v) return;
+            muralNotas = Object.values(v);
+            try { localStorage.setItem('muralInsumos_v1', JSON.stringify(muralNotas)); } catch (e) {}
+            renderizarMural();
+        }, () => {});
     }
 
     window.onload = function() {
