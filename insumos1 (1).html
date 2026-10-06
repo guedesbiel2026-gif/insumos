@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador e Consolidador de Insumos</title>
+    <style>
+        :root {
+            --ink: #1b2a33;
+            --muted: #5b6b75;
+            --bg: #e9ecee;
+            --card-bg: #ffffff;
+            --line: #d5dbdf;
+            --field: #f6f8f9;
+            --primary: #1f5a6e;
+            --primary-dark: #163f4d;
+            --kraft: #b07a3c;
+            --success: #2f7d4f;
+            --danger: #c0392b;
+            --focus: #2d8fb0;
+        }
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            margin: 0;
+            padding: 24px 16px 48px;
+            display: flex;
+            justify-content: center;
+            line-height: 1.4;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1080px;
+            background: var(--card-bg);
+            padding: 0 28px 28px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(20,40,50,.12);
+            overflow: hidden;
+        }
+
+        h1 {
+            margin: 0 -28px 8px;
+            padding: 22px 28px;
+            background: var(--primary-dark);
+            color: #fff;
+            font-size: 1.45rem;
+            font-weight: 600;
+            letter-spacing: .2px;
+            text-align: left;
+            border-bottom: 4px solid var(--kraft);
+        }
+
+        .section-title {
+            margin: 30px 0 14px;
+            padding-left: 12px;
+            border-left: 4px solid var(--primary);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-height: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 6px; font-size: .85rem; color: var(--muted); }
+        input, select, textarea {
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--field);
+            font-size: .95rem;
+            font-family: inherit;
+            color: var(--ink);
+            width: 100%;
+        }
+        input:focus, select:focus, textarea:focus, button:focus-visible {
+            outline: 3px solid rgba(45,143,176,.35);
+            outline-offset: 1px;
+            border-color: var(--focus);
+            background: #fff;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--field);
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+        }
+        .checkbox-group input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); }
+        .checkbox-group label { margin: 0; cursor: pointer; font-size: .9rem; color: var(--ink); }
+
+        .btn-action {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: .9rem;
+            font-family: inherit;
+            transition: background .15s;
+        }
+        .btn-action:hover { background: var(--primary-dark); opacity: 1; }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #25663f; }
+        .btn-danger { background: var(--danger); padding: 6px 10px; font-size: .8rem; }
+        .btn-danger:hover { background: #a02e22; }
+        .btn-outline-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; }
+        .btn-outline-danger:hover { background: #fbeceb; }
+        .btn-warning { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+        .btn-warning:hover { background: var(--field); }
+
+        .button-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .button-group .btn-success { padding: 12px 22px; font-size: 1rem; }
+        .button-group .btn-action:not(.btn-success):not(.btn-warning) { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+        .button-group .btn-action:not(.btn-success):not(.btn-warning):hover { background: #eaf3f6; }
+
+        /* TABELA DE ORDENS */
+        table.data-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-variant-numeric: tabular-nums; }
+        table.data-table th, table.data-table td {
+            border-bottom: 1px solid var(--line);
+            padding: 12px 10px;
+            text-align: left;
+            font-size: .9rem;
+            vertical-align: top;
+        }
+        table.data-table th { background: #eef2f4; color: var(--muted); font-weight: 600; font-size: .82rem; border-bottom: 2px solid var(--line); }
+        table.data-table tbody tr:hover { background: #f8fafb; }
+
+        /* TOTAL CONSOLIDADO: o destaque da tela */
+        .consolidated-box {
+            background: var(--primary-dark);
+            padding: 22px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        .consolidated-box h3 { margin: 0 0 16px; color: #fff; font-size: 1.15rem; font-weight: 600; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+
+        .insumo-card {
+            background: #fff;
+            border-left: 6px solid var(--primary);
+            padding: 14px 16px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .insumo-card.card-sacos { border-left-color: #2d8fb0; }
+        .insumo-card.card-chapas { border-left-color: var(--kraft); }
+        .insumo-card.card-divisorias { border-left-color: #d9a441; }
+        .insumo-card.card-pallets120 { border-left-color: var(--success); }
+        .insumo-card.card-pallets135 { border-left-color: #6b4fa0; }
+
+        .insumo-card .card-title { font-size: .9rem; color: var(--muted); font-weight: 600; }
+        .insumo-card .card-value { font-size: 1.9rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15; }
+        .insumo-card .card-desc { font-size: .8rem; color: var(--ink); font-weight: 600; background: #eef2f4; padding: 3px 8px; border-radius: 4px; align-self: flex-start; }
+
+        /* MURAL */
+        .mural-box { background: var(--field); border: 1px solid var(--line); padding: 20px; border-radius: 10px; margin-top: 30px; }
+        .mural-box h3 { margin: 0; color: var(--ink); font-size: 1.05rem; font-weight: 600; }
+        .mural-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-top: 16px; }
+        .mural-nota {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-top: 4px solid var(--kraft);
+            padding: 12px 14px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .mural-nota-titulo { font-weight: 700; font-size: .95rem; color: var(--ink); margin-bottom: 4px; }
+        .mural-nota-texto { font-size: .85rem; color: var(--muted); margin-bottom: 10px; white-space: pre-wrap; }
+        .mural-acoes { display: flex; justify-content: flex-end; gap: 6px; }
+
+        .btn-print {
+            background: var(--success);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 28px;
+        }
+        .btn-print:hover { background: #25663f; }
+
+        /* RESUMO COMO LISTA COMPACTA */
+        .resumo-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .resumo-topo h3 { margin: 0 !important; }
+        .btn-copiar { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.4); }
+        .btn-copiar:hover { background: rgba(255,255,255,.26); }
+        .resumo-vazio { margin: 0; color: #b9cdd5; font-style: italic; }
+        .cards-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+        .insumo-card { display: grid !important; grid-template-columns: 1fr auto; align-items: center; column-gap: 16px; row-gap: 2px; padding: 10px 16px !important; }
+        .insumo-card > div:first-child { display: contents; }
+        .insumo-card .card-title { grid-column: 1; grid-row: 1; margin: 0; color: var(--ink) !important; font-size: 1rem !important; }
+        .insumo-card .card-desc { grid-column: 1; grid-row: 2; background: none !important; padding: 0 !important; color: var(--muted) !important; font-weight: 500 !important; }
+        .insumo-card .card-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.6rem !important; text-align: right; }
+
+        .hint-insumo { font-size: .78rem; margin-top: 4px; min-height: 1.1em; color: var(--success); font-weight: 600; }
+        .hint-insumo.sem-match { color: #b36b00; }
+
+        @media (max-width: 700px) {
+            body { padding: 0; }
+            .container { border-radius: 0; padding: 0 16px 20px; }
+            h1 { margin: 0 -16px 8px; padding: 18px 16px; font-size: 1.2rem; }
+            table.data-table { display: block; overflow-x: auto; }
+        }
+
+        /* ESTILOS DE IMPRESSÃO */
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }
+            .no-print { display: none !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .print-table { display: table !important; width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: left; font-size: .85rem; }
+            .print-table th { background-color: #f0f0f0; color: #000; }
+            .print-signatures { display: flex !important; justify-content: space-between; margin-top: 60px; }
+            .sig-line { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 5px; font-size: .85rem; }
+            .consolidated-box { background: white !important; border: 1px solid #000 !important; }
+            .consolidated-box h3 { color: #000 !important; }
+            .cards-grid { display: block !important; }
+            .insumo-card { border: 1px solid #000 !important; margin-bottom: 10px; box-shadow: none !important; }
+        }
+        .print-header, .print-signatures { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="print-header">
+        <h2 style="margin:0;">REQUISIÇÃO CONSOLIDADA DE INSUMOS - ALMOXARIFADO</h2>
+        <p style="margin:5px 0 0 0;" id="printDataHora"></p>
+    </div>
+
+    <h1 class="no-print">Central de Planejamento de Produção</h1>
+
+    <div class="section-title no-print">
+        <span>1. Adicionar Produção por Produto</span>
+        <div style="display:flex; gap:8px;">
+            <button class="btn-action" onclick="cadastrarNovoProduto()">➕ Novo Cad. Produto</button>
+            <button class="btn-action btn-outline-danger" onclick="excluirProdutoAtual()">🗑️ Excluir Produto</button>
+        </div>
+    </div>
+
+    <div class="grid no-print">
+        <div class="form-group">
+            <label for="produto">Produto</label>
+            <select id="produto" onchange="carregarProduto()"></select>
+        </div>
+
+        <div class="form-group">
+            <label for="diasRodando">Tempo de Funcionamento (Dias)</label>
+            <input type="number" id="diasRodando" value="5" min="0.1" step="0.5">
+        </div>
+
+        <div class="form-group">
+            <label for="margemPerda">Margem Perda (%)</label>
+            <input type="number" id="margemPerda" value="2" min="0" step="0.5">
+        </div>
+    </div>
+
+    <!-- SEÇÃO DE ABATIMENTO DE SALDO JÁ NO SETOR -->
+    <div class="section-title no-print">Abatimento de Saldo Atual no Setor</div>
+    <div class="grid no-print" style="align-items: center;">
+        <div class="form-group">
+            <label for="saldoNoSetor">Saldo Atual Físico (Já no Setor)</label>
+            <input type="number" id="saldoNoSetor" value="0" min="0" placeholder="Ex: Quantidade de sacos já lá">
+        </div>
+        <div class="form-group" style="justify-content: flex-end; height: 100%;">
+            <label>&nbsp;</label>
+            <div class="checkbox-group">
+                <input type="checkbox" id="ativarAbatimento">
+                <label for="ativarAbatimento">Abater este saldo do pedido</label>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="listaInsumos"></datalist>
+    <div class="section-title no-print">Parâmetros do Produto Selecionado</div>
+    <div class="grid no-print">
+        <div class="form-group">
+            <label for="producaoDiaria">Produção Diária (Peças/Dia)</label>
+            <input type="number" id="producaoDiaria" value="6000" min="1">
+        </div>
+        <div class="form-group">
+            <label for="codigoSaco">Cód. do Saco</label>
+            <input type="text" id="codigoSaco" placeholder="Ex: SAC-01" list="listaInsumos" oninput="atualizarDicasCodigos()">
+            <small class="hint-insumo" id="hintSaco"></small>
+        </div>
+        <div class="form-group">
+            <label for="codigoChapa">Cód. da Chapa de Papelão</label>
+            <input type="text" id="codigoChapa" placeholder="Ex: CHP-01" list="listaInsumos" oninput="atualizarDicasCodigos()">
+            <small class="hint-insumo" id="hintChapa"></small>
+        </div>
+        <div class="form-group">
+            <label for="codigoDivisoria">Cód. da Divisória</label>
+            <input type="text" id="codigoDivisoria" placeholder="Ex: DIV-01" list="listaInsumos" oninput="atualizarDicasCodigos()">
+            <small class="hint-insumo" id="hintDivisoria"></small>
+        </div>
+        <div class="form-group">
+            <label for="tipoPallet">Modelo Pallet</label>
+            <select id="tipoPallet">
+                <option value="Pallet 1,20m x 1,00m">Pallet 1,20m</option>
+                <option value="Pallet 1,35m x 1,10m">Pallet 1,35m</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="pecasPorSaco">Peças/Saco</label>
+            <input type="number" id="pecasPorSaco" value="30" min="1">
+        </div>
+        <div class="form-group">
+            <label for="sacosPorPallet">Sacos/Pallet</label>
+            <input type="number" id="sacosPorPallet" value="14" min="1">
+        </div>
+        <div class="form-group">
+            <label for="chapasPorSaco">Chapas / Pacote (Saco)</label>
+            <input type="number" id="chapasPorSaco" value="1" min="0">
+        </div>
+        <div class="form-group">
+            <label for="divisoriaPorPallet">Divisórias / Pallet</label>
+            <input type="number" id="divisoriaPorPallet" value="8" min="0">
+        </div>
+    </div>
+
+    <div class="button-group no-print">
+        <button class="btn-action btn-success" onclick="adicionarOrdem()">➕ Adicionar Ordem à Lista</button>
+        <button class="btn-action" onclick="salvarReceitaAtual()">💾 Salvar Receita do Produto</button>
+        <button class="btn-action btn-warning" onclick="exportarReceitas()" title="Gera um arquivo de segurança com suas receitas">📥 Backup de Receitas</button>
+        <button class="btn-action" onclick="importarReceitas()" title="Restaura suas receitas de um arquivo de backup">📤 Restaurar Backup</button>
+    </div>
+
+    <!-- RESUMO: O QUE PEDIR -->
+    <div class="consolidated-box">
+        <div class="resumo-topo">
+            <h3>📋 O que preciso pedir</h3>
+            <button class="btn-action btn-copiar no-print" id="btnCopiar" onclick="copiarLista()">Copiar lista</button>
+        </div>
+        <div class="cards-grid" id="cardsConsolidados">
+            <p class="resumo-vazio">Adicione uma ordem para ver aqui tudo o que precisa pedir.</p>
+        </div>
+    </div>
+
+    <!-- LISTA DE PRODUÇÕES ADICIONADAS -->
+    <div class="section-title">
+        <span>Ordens de Produção Programadas</span>
+        <button class="btn-action btn-danger no-print" onclick="limparTudo()">🗑️ Limpar Lista</button>
+    </div>
+
+    <table class="data-table print-table" id="tabelaOrdens">
+        <thead>
+            <tr>
+                <th>Produto</th>
+                <th>Tempo (Dias)</th>
+                <th>Qtd Peças Estimadas</th>
+                <th>Sacos Solicitados</th>
+                <th>Chapas</th>
+                <th>Divisórias</th>
+                <th>Pallets</th>
+                <th class="no-print">Ação</th>
+            </tr>
+        </thead>
+        <tbody id="corpoTabelaOrdens">
+            <!-- Linhas inseridas via JS -->
+        </tbody>
+    </table>
+
+    <!-- MURAL DE INSUMOS E AVISOS -->
+    <div class="mural-box no-print">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>📌 Insumos para Sopro (Mural)</h3>
+            <button class="btn-action" style="background-color: #fa8c16;" onclick="adicionarNotaMural()">➕ Nova Nota</button>
+        </div>
+        <div class="mural-grid" id="containerMural">
+            <!-- Notas do mural inseridas via JS -->
+        </div>
+    </div>
+
+    <div class="print-signatures">
+        <div class="sig-line">Solicitado por (Produção)</div>
+        <div class="sig-line">Atendido por (Almoxarifado)</div>
+    </div>
+
+    <button class="btn-print no-print" onclick="imprimirConsolidado()">
+        🖨️ Imprimir Requisição Consolidada (PDF)
+    </button>
+</div>
+
+<script>
+    const padroesIniciais = {
+        bombona5l: { nome: "Bombona 5 Litros", producaoDiaria: 6000, codigoSaco: "SAC-BOMB-05", codigoChapa: "CHP-PADRAO", codigoDivisoria: "DIV-PADRAO", tipoPallet: "Pallet 1,20m x 1,00m", pecasPorSaco: 30, sacosPorPallet: 14, chapasPorSaco: 1, divisoriaPorPallet: 8 },
+        bombona20l: { nome: "Bombona 20 Litros", producaoDiaria: 2000, codigoSaco: "SAC-BOMB-20", codigoChapa: "CHP-PADRAO", codigoDivisoria: "", tipoPallet: "Pallet 1,35m x 1,10m", pecasPorSaco: 10, sacosPorPallet: 14, chapasPorSaco: 1, divisoriaPorPallet: 0 }
+    };
+
+    const insumosIniciaisSopro = [
+        { id: 3016, titulo: "Código: 3016", texto: "PALLET 1,10 X 1,20 - P/ FRASCO E BB 05L 24UN/PCT / 20L / 25L (25UNI)" },
+        { id: 3017, titulo: "Código: 3017", texto: "PALLET 1,15 X 1,35 - P/ BB 05L / 10L (25UNI)" },
+        { id: 2014, titulo: "Código: 2014", texto: "ETIQUETA P/ LOTE DE BOMBONAS (PAPEL COUCHE 22 X 12 MM) - NOVO (10000UNI)" },
+        { id: 2093, titulo: "Código: 2093", texto: "ETIQUETA PAPEL COUCHE 100MM X 50MM - BRANCA (1000UNI)" },
+        { id: 2028, titulo: "Código: 2028", texto: "RIBBON CERA MEDIDA 110 X 75 (UNI)" },
+        { id: 2027, titulo: "Código: 2027", texto: "LIXA 320 - ESPONJA ABRASIVA ROLO 100MM X 10M (UNI)" },
+        { id: 2628, titulo: "Código: 2628", texto: "FITA ADESIVA 45MM X 1200M CRISTAL - PERSONALIZADA MAGNO 30 ANOS (UNI)" },
+        { id: 3009, titulo: "Código: 3009", texto: "FILME STRETCH MAQUINA - COM TUBETE (10KG)" },
+        { id: 3026, titulo: "Código: 3026", texto: "CHAPA DIVISORIA P/ SACO BOMBONAS - 1100X585 (UNI)" },
+        { id: 3051, titulo: "Código: 3051", texto: "BANDEJA DIVISORIA C/ IMPRESSAO P/ BOMBONAS-1370X1145X97MM (400UNI)" },
+        { id: 2064, titulo: "Código: 2064", texto: "LAMINA P/ ESTILETE ESTREITO 9MM C/10 (UNI)" },
+        { id: 201075, titulo: "Código: 201075", texto: "SACO PIGMENTADO S/ IMP P/ BOMBONA 10LT / 20LT (680X1600X100MIC) (50UNI)" },
+        { id: 200295, titulo: "Código: 200295", texto: "SACO PIGMENTADO IMPRESSO P/ BOMBONA 25LT (660X1610X100MIC) (50UNI)" },
+        { id: 200606, titulo: "Código: 200606", texto: "SACO TRANSPARENTE IMPRESSO P/ BOMBONA 01LT (600X1500X120MIC) (50UNI)" },
+        { id: 200296, titulo: "Código: 200296", texto: "SACO PIGMENTADO IMPRESSO P/ BOMBONA 05LT (690X1600X100MIC) (50UNI)" }
+    ];
+
+    let receitas = carregarReceitasStorage();
+    let ordensAcumuladas = [];
+    let muralNotas = carregarMuralStorage();
+
+    function carregarReceitasStorage() {
+        try {
+            const salvas = localStorage.getItem('receitasInsumos_v_definitiva');
+            return salvas ? JSON.parse(salvas) : padroesIniciais;
+        } catch (e) {
+            return padroesIniciais;
+        }
+    }
+
+    function salvarReceitasStorage() {
+        try {
+            localStorage.setItem('receitasInsumos_v_definitiva', JSON.stringify(receitas));
+        } catch (e) {
+            console.error("Erro ao salvar no LocalStorage", e);
+        }
+    }
+
+    function carregarMuralStorage() {
+        try {
+            const salvas = localStorage.getItem('muralInsumos_v1');
+            return salvas ? JSON.parse(salvas) : insumosIniciaisSopro;
+        } catch (e) {
+            return insumosIniciaisSopro;
+        }
+    }
+
+    function salvarMuralStorage() {
+        try {
+            localStorage.setItem('muralInsumos_v1', JSON.stringify(muralNotas));
+        } catch (e) {
+            console.error("Erro ao salvar mural no LocalStorage", e);
+        }
+    }
+
+    function exportarReceitas() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(receitas, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "backup_receitas_insumos.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function importarReceitas() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = readerEvent => {
+                try {
+                    receitas = JSON.parse(readerEvent.target.result);
+                    salvarReceitasStorage();
+                    renderizarSelectProdutos();
+                    alert('✅ Receitas restauradas com sucesso!');
+                } catch(err) {
+                    alert('❌ Erro ao ler o arquivo de backup.');
+                }
+            }
+            reader.readAsText(file);
+        }
+        input.click();
+    }
+
+    function renderizarSelectProdutos() {
+        const select = document.getElementById('produto');
+        const valorAtual = select.value;
+        select.innerHTML = '';
+        for (let key in receitas) {
+            let option = document.createElement('option');
+            option.value = key;
+            option.text = receitas[key].nome;
+            select.appendChild(option);
+        }
+        if (receitas[valorAtual]) {
+            select.value = valorAtual;
+        }
+        carregarProduto();
+    }
+
+    function codigoDaNota(n) {
+        return String(n.titulo || '').replace(/^c[óo]digo:?\s*/i, '').trim();
+    }
+
+    function nomeInsumo(codigo) {
+        const c = String(codigo || '').trim().toLowerCase();
+        if (!c) return '';
+        const nota = muralNotas.find(n => codigoDaNota(n).toLowerCase() === c);
+        return nota ? nota.texto : '';
+    }
+
+    function infoCodigo(codigo) {
+        const nome = nomeInsumo(codigo);
+        return (nome ? escapeHtml(nome) + '<br>' : '') + 'Cód: ' + escapeHtml(String(codigo));
+    }
+
+    function preencherListaInsumos() {
+        const dl = document.getElementById('listaInsumos');
+        dl.innerHTML = '';
+        muralNotas.forEach(n => {
+            const o = document.createElement('option');
+            o.value = codigoDaNota(n);
+            o.label = n.texto;
+            o.textContent = n.texto;
+            dl.appendChild(o);
+        });
+    }
+
+    function atualizarDicasCodigos() {
+        [['codigoSaco','hintSaco'],['codigoChapa','hintChapa'],['codigoDivisoria','hintDivisoria']].forEach(([cid, hid]) => {
+            const cod = document.getElementById(cid).value.trim();
+            const el = document.getElementById(hid);
+            const nome = nomeInsumo(cod);
+            el.className = 'hint-insumo' + (cod && !nome ? ' sem-match' : '');
+            el.textContent = !cod ? '' : (nome || '⚠ Código não está na tabela de insumos');
+        });
+    }
+
+    function carregarProduto() {
+        const prodKey = document.getElementById('produto').value;
+        if (!prodKey || !receitas[prodKey]) return;
+        const config = receitas[prodKey];
+        document.getElementById('producaoDiaria').value = config.producaoDiaria || 5000;
+        document.getElementById('codigoSaco').value = config.codigoSaco || "";
+        document.getElementById('codigoChapa').value = config.codigoChapa || "";
+        document.getElementById('codigoDivisoria').value = config.codigoDivisoria || "";
+        document.getElementById('tipoPallet').value = config.tipoPallet || "Pallet 1,20m x 1,00m";
+        document.getElementById('pecasPorSaco').value = config.pecasPorSaco;
+        document.getElementById('sacosPorPallet').value = config.sacosPorPallet;
+        document.getElementById('chapasPorSaco').value = config.chapasPorSaco ?? 1;
+        document.getElementById('divisoriaPorPallet').value = config.divisoriaPorPallet ?? 8;
+        atualizarDicasCodigos();
+    }
+
+    function salvarReceitaAtual() {
+        const prodKey = document.getElementById('produto').value;
+        if (!prodKey || !receitas[prodKey]) return;
+
+        receitas[prodKey].producaoDiaria = parseFloat(document.getElementById('producaoDiaria').value) || 0;
+        receitas[prodKey].codigoSaco = document.getElementById('codigoSaco').value.trim();
+        receitas[prodKey].codigoChapa = document.getElementById('codigoChapa').value.trim();
+        receitas[prodKey].codigoDivisoria = document.getElementById('codigoDivisoria').value.trim();
+        receitas[prodKey].tipoPallet = document.getElementById('tipoPallet').value;
+        receitas[prodKey].pecasPorSaco = parseFloat(document.getElementById('pecasPorSaco').value) || 1;
+        receitas[prodKey].sacosPorPallet = parseFloat(document.getElementById('sacosPorPallet').value) || 1;
+        receitas[prodKey].chapasPorSaco = parseFloat(document.getElementById('chapasPorSaco').value) || 0;
+        receitas[prodKey].divisoriaPorPallet = parseFloat(document.getElementById('divisoriaPorPallet').value) || 0;
+
+        salvarReceitasStorage();
+        alert(`💾 Receita de "${receitas[prodKey].nome}" salva com sucesso!`);
+    }
+
+    function adicionarOrdem() {
+        const prodSelect = document.getElementById('produto');
+        
+        if (!prodSelect.value) {
+            alert('Cadastre um produto antes de continuar.');
+            return;
+        }
+
+        const produtoNome = prodSelect.options[prodSelect.selectedIndex].text;
+        const codigoSaco = document.getElementById('codigoSaco').value.trim() || "Sem Código";
+        const codigoChapa = document.getElementById('codigoChapa').value.trim() || "Sem Código";
+        const codigoDivisoria = document.getElementById('codigoDivisoria').value.trim() || "Sem Código";
+
+        const diasRodando = parseFloat(document.getElementById('diasRodando').value) || 0;
+        const producaoDiaria = parseFloat(document.getElementById('producaoDiaria').value) || 0;
+        const margemPerda = parseFloat(document.getElementById('margemPerda').value) || 0;
+        
+        const tipoPallet = document.getElementById('tipoPallet').value;
+        const pecasPorSaco = parseFloat(document.getElementById('pecasPorSaco').value) || 1;
+        const sacosPorPallet = parseFloat(document.getElementById('sacosPorPallet').value) || 1;
+        const chapasPorSaco = parseFloat(document.getElementById('chapasPorSaco').value) || 0;
+        const divisoriaPorPallet = parseFloat(document.getElementById('divisoriaPorPallet').value) || 0;
+
+        if (diasRodando <= 0 || producaoDiaria <= 0) { 
+            alert('Informe valores válidos para dias e produção diária.'); 
+            return; 
+        }
+
+        const producaoTotal = diasRodando * producaoDiaria;
+        const prodComMargem = producaoTotal * (1 + (margemPerda / 100));
+        let sacos = Math.ceil(prodComMargem / pecasPorSaco);
+        const sacosBrutos = sacos; // total de sacos ANTES do abatimento (base das chapas)
+
+        // ABATIMENTO OPCIONAL DE SALDO NO SETOR (APLICADO AOS SACOS)
+        const ativarAbatimento = document.getElementById('ativarAbatimento').checked;
+        let saldoSetorInformado = 0;
+
+        if (ativarAbatimento) {
+            saldoSetorInformado = parseFloat(document.getElementById('saldoNoSetor').value) || 0;
+            sacos = sacos - saldoSetorInformado;
+            if (sacos < 0) sacos = 0; // Evita valor negativo
+        }
+
+        const pecasPorPallet = pecasPorSaco * sacosPorPallet;
+        const pallets = Math.ceil(prodComMargem / pecasPorPallet);
+        
+        const chapasTotais = sacosBrutos * chapasPorSaco; // chapas não sofrem abatimento do saldo de sacos
+        const divisoriasTotais = pallets * divisoriaPorPallet;
+
+        ordensAcumuladas.push({
+            id: Date.now(),
+            produtoNome,
+            codigoSaco,
+            codigoChapa,
+            codigoDivisoria,
+            diasRodando,
+            producaoTotal,
+            sacos,
+            chapasTotais,
+            divisoriasTotais,
+            pallets,
+            tipoPallet,
+            abatido: ativarAbatimento ? saldoSetorInformado : 0
+        });
+
+        atualizarTabelaEAcumulado();
+    }
+
+    function removerOrdem(id) {
+        ordensAcumuladas = ordensAcumuladas.filter(o => o.id !== id);
+        atualizarTabelaEAcumulado();
+    }
+
+    function limparTudo() {
+        if(ordensAcumuladas.length === 0) return;
+        if(confirm("Deseja apagar todas as ordens salvas?")) {
+            ordensAcumuladas = [];
+            atualizarTabelaEAcumulado();
+        }
+    }
+
+    function atualizarTabelaEAcumulado() {
+        const tbody = document.getElementById('corpoTabelaOrdens');
+        tbody.innerHTML = '';
+
+        let sacosPorCodigo = {};
+        let chapasPorCodigo = {};
+        let divisoriasPorCodigo = {};
+        let totPallets120 = 0;
+        let totPallets135 = 0;
+
+        ordensAcumuladas.forEach(item => {
+            if (!sacosPorCodigo[item.codigoSaco]) sacosPorCodigo[item.codigoSaco] = 0;
+            sacosPorCodigo[item.codigoSaco] += item.sacos;
+
+            if (item.chapasTotais > 0) {
+                if (!chapasPorCodigo[item.codigoChapa]) chapasPorCodigo[item.codigoChapa] = 0;
+                chapasPorCodigo[item.codigoChapa] += item.chapasTotais;
+            }
+
+            if (item.divisoriasTotais > 0) {
+                if (!divisoriasPorCodigo[item.codigoDivisoria]) divisoriasPorCodigo[item.codigoDivisoria] = 0;
+                divisoriasPorCodigo[item.codigoDivisoria] += item.divisoriasTotais;
+            }
+
+            if(item.tipoPallet.includes('1,20m')) {
+                totPallets120 += item.pallets;
+            } else {
+                totPallets135 += item.pallets;
+            }
+
+            let infoAbatimento = item.abatido > 0 ? `<br><small style="color:#d97008;">(Abatido ${item.abatido} un já no setor)</small>` : '';
+
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.produtoNome}</td>
+                <td>${item.diasRodando.toLocaleString('pt-BR')} dias</td>
+                <td>${item.producaoTotal.toLocaleString('pt-BR')} pcs</td>
+                <td>${item.sacos.toLocaleString('pt-BR')} un ${infoAbatimento}<br><small style="color:#5e6c84;">${infoCodigo(item.codigoSaco)}</small></td>
+                <td>${item.chapasTotais > 0 ? item.chapasTotais.toLocaleString('pt-BR') + ' un <br><small style="color:#5e6c84;">' + infoCodigo(item.codigoChapa) + '</small>' : '-'}</td>
+                <td>${item.divisoriasTotais > 0 ? item.divisoriasTotais.toLocaleString('pt-BR') + ' un <br><small style="color:#5e6c84;">' + infoCodigo(item.codigoDivisoria) + '</small>' : '-'}</td>
+                <td>${item.pallets.toLocaleString('pt-BR')} un (${item.tipoPallet.includes('1,20m') ? '1,20m' : '1,35m'})</td>
+                <td class="no-print"><button class="btn-action btn-danger" onclick="removerOrdem(${item.id})">❌</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if(ordensAcumuladas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhuma ordem programada.</td></tr>';
+        }
+
+        const containerCards = document.getElementById('cardsConsolidados');
+        containerCards.innerHTML = '';
+
+        let itensVisiveis = 0;
+
+        for (let codigo in sacosPorCodigo) {
+            let qtd = sacosPorCodigo[codigo];
+            if (qtd > 0) {
+                itensVisiveis++;
+                let card = document.createElement('div');
+                card.className = 'insumo-card card-sacos';
+                card.innerHTML = `
+                    <div>
+                        <div class="card-title">${escapeHtml(nomeInsumo(codigo) || 'Sacos a Solicitar')}</div>
+                        <div class="card-value">${qtd.toLocaleString('pt-BR')} <span style="font-size:0.9rem; font-weight:normal;">un</span></div>
+                    </div>
+                    <div class="card-desc">Sacos · Cód: ${escapeHtml(String(codigo))}</div>
+                `;
+                containerCards.appendChild(card);
+            }
+        }
+
+        for (let codigo in chapasPorCodigo) {
+            let qtd = chapasPorCodigo[codigo];
+            if (qtd > 0) {
+                itensVisiveis++;
+                let card = document.createElement('div');
+                card.className = 'insumo-card card-chapas';
+                card.innerHTML = `
+                    <div>
+                        <div class="card-title">${escapeHtml(nomeInsumo(codigo) || 'Chapas de Papelão')}</div>
+                        <div class="card-value">${qtd.toLocaleString('pt-BR')} <span style="font-size:0.9rem; font-weight:normal;">un</span></div>
+                    </div>
+                    <div class="card-desc">Chapas · Cód: ${escapeHtml(String(codigo))}</div>
+                `;
+                containerCards.appendChild(card);
+            }
+        }
+
+        for (let codigo in divisoriasPorCodigo) {
+            let qtd = divisoriasPorCodigo[codigo];
+            if (qtd > 0) {
+                itensVisiveis++;
+                let card = document.createElement('div');
+                card.className = 'insumo-card card-divisorias';
+                card.innerHTML = `
+                    <div>
+                        <div class="card-title">${escapeHtml(nomeInsumo(codigo) || 'Divisórias (Bandejas)')}</div>
+                        <div class="card-value">${qtd.toLocaleString('pt-BR')} <span style="font-size:0.9rem; font-weight:normal;">un</span></div>
+                    </div>
+                    <div class="card-desc">Divisórias · Cód: ${escapeHtml(String(codigo))}</div>
+                `;
+                containerCards.appendChild(card);
+            }
+        }
+
+        const outrosItens = [
+            { classe: 'card-pallets120', titulo: 'Pallets 1,20m', qtd: totPallets120, desc: 'Standard (1,20m x 1,00m)' },
+            { classe: 'card-pallets135', titulo: 'Pallets 1,35m', qtd: totPallets135, desc: 'Especial (1,35m x 1,10m)' }
+        ];
+
+        outrosItens.forEach(item => {
+            if (item.qtd > 0) {
+                itensVisiveis++;
+                let card = document.createElement('div');
+                card.className = `insumo-card ${item.classe}`;
+                card.innerHTML = `
+                    <div>
+                        <div class="card-title">${item.titulo}</div>
+                        <div class="card-value">${item.qtd.toLocaleString('pt-BR')} <span style="font-size:0.9rem; font-weight:normal;">un</span></div>
+                    </div>
+                    <div class="card-desc">${item.desc}</div>
+                `;
+                containerCards.appendChild(card);
+            }
+        });
+
+        if (itensVisiveis === 0) {
+            containerCards.innerHTML = '<p style="margin:0; color:#5e6c84; font-style:italic;">Nenhum insumo necessário com o saldo atual.</p>';
+        }
+    }
+
+    function renderizarMural() {
+        const containerMural = document.getElementById('containerMural');
+        containerMural.innerHTML = '';
+        preencherListaInsumos();
+        atualizarDicasCodigos();
+
+        if (muralNotas.length === 0) {
+            containerMural.innerHTML = '<p style="margin:0; color:#8c8c8c; font-size: 0.9rem; font-style:italic;">Nenhuma nota no mural.</p>';
+            return;
+        }
+
+        muralNotas.forEach(nota => {
+            let div = document.createElement('div');
+            div.className = 'mural-nota';
+            div.innerHTML = `
+                <div>
+                    <div class="mural-nota-titulo">${escapeHtml(nota.titulo)}</div>
+                    <div class="mural-nota-texto">${escapeHtml(nota.texto)}</div>
+                </div>
+                <div class="mural-acoes">
+                    <button class="btn-action" style="padding: 4px 8px; font-size: 0.75rem;" onclick="editarNotaMural(${nota.id})">✏️ Editar</button>
+                    <button class="btn-action btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="excluirNotaMural(${nota.id})">🗑️</button>
+                </div>
+            `;
+            containerMural.appendChild(div);
+        });
+    }
+
+    function adicionarNotaMural() {
+        const titulo = prompt("Título da Nota / Insumo:");
+        if (!titulo || !titulo.trim()) return;
+        const texto = prompt("Descrição / Observação:");
+        
+        muralNotas.push({
+            id: Date.now(),
+            titulo: titulo.trim(),
+            texto: texto ? texto.trim() : ""
+        });
+        salvarMuralStorage();
+        renderizarMural();
+    }
+
+    function editarNotaMural(id) {
+        const nota = muralNotas.find(n => n.id === id);
+        if (!nota) return;
+
+        const novoTitulo = prompt("Editar Título:", nota.titulo);
+        if (novoTitulo === null) return;
+        const novoTexto = prompt("Editar Descrição:", nota.texto);
+        if (novoTexto === null) return;
+
+        nota.titulo = novoTitulo.trim() || nota.titulo;
+        nota.texto = novoTexto.trim();
+        salvarMuralStorage();
+        renderizarMural();
+    }
+
+    function excluirNotaMural(id) {
+        if (confirm("Deseja excluir esta nota do mural?")) {
+            muralNotas = muralNotas.filter(n => n.id !== id);
+            salvarMuralStorage();
+            renderizarMural();
+        }
+    }
+
+    function escapeHtml(text) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function cadastrarNovoProduto() {
+        const nome = prompt("Nome do novo produto:");
+        if (!nome || !nome.trim()) return;
+        const key = 'prod_' + Date.now();
+        receitas[key] = { 
+            nome: nome.trim(), 
+            producaoDiaria: 5000,
+            codigoSaco: "Cód-Saco",
+            codigoChapa: "Cód-Chapa",
+            codigoDivisoria: "Cód-Div",
+            tipoPallet: "Pallet 1,20m x 1,00m", 
+            pecasPorSaco: 30, 
+            sacosPorPallet: 14, 
+            chapasPorSaco: 1, 
+            divisoriaPorPallet: 8 
+        };
+        salvarReceitasStorage();
+        renderizarSelectProdutos();
+        document.getElementById('produto').value = key;
+        carregarProduto();
+    }
+
+    function excluirProdutoAtual() {
+        const prodKey = document.getElementById('produto').value;
+        if (!prodKey) return;
+
+        const chaves = Object.keys(receitas);
+        if (chaves.length <= 1) {
+            alert("Você precisa manter pelo menos um produto cadastrado.");
+            return;
+        }
+
+        const nome = receitas[prodKey].nome;
+        if (confirm(`Tem certeza que deseja excluir o produto "${nome}"?`)) {
+            delete receitas[prodKey];
+            salvarReceitasStorage();
+            renderizarSelectProdutos();
+            alert(`🗑️ Produto "${nome}" excluído com sucesso!`);
+        }
+    }
+
+    function imprimirConsolidado() {
+        const agora = new Date();
+        document.getElementById('printDataHora').innerText = `Emitido em: ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}`;
+        window.print();
+    }
+
+    function copiarLista() {
+        const cards = [...document.querySelectorAll('#cardsConsolidados .insumo-card')];
+        const btn = document.getElementById('btnCopiar');
+        if (!cards.length) { alert('Ainda não há nada para copiar.'); return; }
+        const texto = cards.map(c => {
+            const t = c.querySelector('.card-title').innerText.trim();
+            const d = c.querySelector('.card-desc').innerText.trim();
+            const v = c.querySelector('.card-value').innerText.replace(/\s+/g, ' ').trim();
+            return `${t} (${d}): ${v}`;
+        }).join('\n');
+        const feito = () => { btn.innerText = 'Copiado!'; setTimeout(() => btn.innerText = 'Copiar lista', 1500); };
+        const alternativo = () => {
+            const ta = document.createElement('textarea');
+            ta.value = texto; document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta); feito();
+        };
+        if (navigator.clipboard) navigator.clipboard.writeText(texto).then(feito).catch(alternativo);
+        else alternativo();
+    }
+
+    window.onload = function() {
+        renderizarSelectProdutos();
+        renderizarMural();
+    };
+</script>
+
+</body>
+</html>
