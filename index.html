@@ -464,6 +464,9 @@
         { id: 200296, titulo: "Código: 200296", texto: "SACO PIGMENTADO IMPRESSO P/ BOMBONA 05LT (690X1600X100MIC) (50UNI)" }
     ];
 
+    // Códigos dos pallets (os nomes vêm do mural, pelo código)
+    const CODIGOS_PALLET = { p120: '3016', p135: '3017' };
+
     let receitas = carregarReceitasStorage();
     let ordensAcumuladas = [];
     let muralNotas = carregarMuralStorage();
@@ -738,6 +741,8 @@
 
             let infoAbatimento = item.abatido > 0 ? `<br><small style="color:#d97008;">(Abatido ${item.abatido} un já no setor)</small>` : '';
 
+            const codPallet = item.tipoPallet.includes('1,20m') ? CODIGOS_PALLET.p120 : CODIGOS_PALLET.p135;
+
             let tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.produtoNome}</td>
@@ -746,7 +751,7 @@
                 <td>${item.sacos.toLocaleString('pt-BR')} un ${infoAbatimento}<br><small style="color:#5e6c84;">${infoCodigo(item.codigoSaco)}</small></td>
                 <td>${item.chapasTotais > 0 ? item.chapasTotais.toLocaleString('pt-BR') + ' un <br><small style="color:#5e6c84;">' + infoCodigo(item.codigoChapa) + '</small>' : '-'}</td>
                 <td>${item.divisoriasTotais > 0 ? item.divisoriasTotais.toLocaleString('pt-BR') + ' un <br><small style="color:#5e6c84;">' + infoCodigo(item.codigoDivisoria) + '</small>' : '-'}</td>
-                <td>${item.pallets.toLocaleString('pt-BR')} un (${item.tipoPallet.includes('1,20m') ? '1,20m' : '1,35m'})</td>
+                <td>${item.pallets.toLocaleString('pt-BR')} un (${item.tipoPallet.includes('1,20m') ? '1,20m' : '1,35m'})<br><small style="color:#5e6c84;">${infoCodigo(codPallet)}</small></td>
                 <td class="no-print"><button class="btn-action btn-danger" onclick="removerOrdem(${item.id})">❌</button></td>
             `;
             tbody.appendChild(tr);
@@ -813,8 +818,8 @@
         }
 
         const outrosItens = [
-            { classe: 'card-pallets120', titulo: 'Pallets 1,20m', qtd: totPallets120, desc: 'Standard (1,20m x 1,00m)' },
-            { classe: 'card-pallets135', titulo: 'Pallets 1,35m', qtd: totPallets135, desc: 'Especial (1,35m x 1,10m)' }
+            { classe: 'card-pallets120', titulo: 'Pallets 1,20m', qtd: totPallets120, codigo: CODIGOS_PALLET.p120 },
+            { classe: 'card-pallets135', titulo: 'Pallets 1,35m', qtd: totPallets135, codigo: CODIGOS_PALLET.p135 }
         ];
 
         outrosItens.forEach(item => {
@@ -824,10 +829,10 @@
                 card.className = `insumo-card ${item.classe}`;
                 card.innerHTML = `
                     <div>
-                        <div class="card-title">${item.titulo}</div>
+                        <div class="card-title">${escapeHtml(nomeInsumo(item.codigo) || item.titulo)}</div>
                         <div class="card-value">${item.qtd.toLocaleString('pt-BR')} <span style="font-size:0.9rem; font-weight:normal;">un</span></div>
                     </div>
-                    <div class="card-desc">${item.desc}</div>
+                    <div class="card-desc">Pallets · Cód: ${escapeHtml(item.codigo)}</div>
                 `;
                 containerCards.appendChild(card);
             }
@@ -864,6 +869,9 @@
             `;
             containerMural.appendChild(div);
         });
+
+        // atualiza a lista de pedidos para refletir nomes editados no mural
+        atualizarTabelaEAcumulado();
     }
 
     function adicionarNotaMural() {
@@ -905,7 +913,7 @@
 
     function escapeHtml(text) {
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
     }
 
     function cadastrarNovoProduto() {
